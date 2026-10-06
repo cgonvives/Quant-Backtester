@@ -1,0 +1,23 @@
+# Entornos virtuales
+.q-backtester/
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Datos descargados (se regeneran con: python -m src.data)
+data/
+
+# Ficheros intermedios de los PDFs (fórmulas y figuras renderizadas)
+docs/_build/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini

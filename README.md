@@ -10,7 +10,7 @@ Se prueban dos familias de estrategias clásicas —momentum (cruce de medias) y
 
 ## Resultados
 
-*(Pendiente: tabla comparativa y gráfico de equity de las estrategias vs. buy-and-hold, con y sin costes, y curva walk-forward.)*
+*(Pendiente: tabla comparativa y gráfico de equity de las estrategias vs. buy-and-hold, con y sin costes, y curva walk-forward. La sección 6 del notebook `03_walkforward` genera la tabla en Markdown y la imagen `docs/img/equity.png`.)*
 
 | Estrategia | CAGR | Vol. | Sharpe | Sortino | Max DD | Calmar | Turnover anual |
 |---|---|---|---|---|---|---|---|
@@ -27,20 +27,33 @@ Se prueban dos familias de estrategias clásicas —momentum (cruce de medias) y
 ```
 quant-backtester/
 ├── README.md
-├── requirements.txt
+├── requirements.txt         # dependencias
+├── requirements-dev.txt     # + regenerar los PDF y ejecutar notebooks en bloque
+├── pyproject.toml           # configuración de pytest
 ├── src/
-│   ├── data.py          # descarga y limpieza (yfinance)
-│   ├── strategies.py    # señales: momentum, bollinger
-│   ├── backtest.py      # motor: señales → posiciones → P&L
-│   ├── metrics.py       # sharpe, sortino, drawdown, calmar
-│   └── walkforward.py   # validación out-of-sample
+│   ├── config.py            # universo, fechas, costes, rejillas: todos los parámetros
+│   ├── data.py              # descarga y limpieza (yfinance)
+│   ├── strategies.py        # señales: momentum, bollinger
+│   ├── backtest.py          # motor: señales → posiciones → P&L
+│   ├── metrics.py           # sharpe, sortino, drawdown, calmar
+│   ├── walkforward.py       # validación out-of-sample
+│   └── plotting.py          # gráficos de los notebooks
 ├── notebooks/
 │   ├── 01_exploracion.ipynb
 │   ├── 02_estrategias.ipynb
 │   └── 03_walkforward.ipynb
-└── tests/
-    └── test_backtest.py
+├── tests/                   # un fichero por módulo + datos sintéticos (helpers.py)
+├── docs/                    # teoría en PDF (00 = guía), fuentes Markdown y progreso.md
+└── data/                    # precios descargados (no se versiona)
 ```
+
+### Cómo está construido: aprender haciendo
+
+El código de soporte (descarga, validaciones, orquestación, tablas y gráficos) está hecho. Las piezas de la materia (rendimientos, el motor, las estrategias, las métricas y el walk-forward) son **26 funciones TODO** que se implementan a mano, guiadas por:
+
+- `docs/00_Guia_paso_a_paso.pdf`: entorno, orden de trabajo y flujo de git. Los capítulos `01`–`06` explican la teoría de cada bloque con pseudocódigo y pistas, y `A` es una chuleta de pandas para series temporales.
+- `tests/`: la batería completa hace de autocorrector. Un TODO pendiente aparece como *skipped* "TODO pendiente", no como fallo.
+- `docs/progreso.md`: checklist de los TODO.
 
 ---
 
@@ -55,7 +68,7 @@ quant-backtester/
 
 **`backtest.py`** — el núcleo, vectorizado en pandas
 - Entrada: DataFrame de precios y DataFrame de señales (-1, 0, 1) por activo.
-- Posiciones = señal desplazada un día (`shift(1)`): se opera al cierre de mañana con la información de hoy. Es el error número uno de los backtests caseros y está documentado explícitamente.
+- Posiciones = señal desplazada un día (`shift(1)`): la señal calculada con el cierre de hoy decide la posición que se mantiene desde ese cierre hasta el de mañana, y gana el rendimiento de mañana. Usar la señal de hoy para el rendimiento de hoy (sin `shift`) es el error número uno de los backtests caseros y está documentado explícitamente. Suponer que se opera en el mismo cierre en que se calcula la señal es una aproximación; `lag=2` es la versión conservadora.
 - Retorno bruto = posición × retorno del activo.
 - Costes: `turnover = |posición_t − posición_{t−1}|`; coste = turnover × (comisión en bps + slippage en bps). Valores por defecto: 5 bps + 5 bps.
 - Salida: retornos netos, curva de equity, posiciones y turnover acumulado.
@@ -108,12 +121,16 @@ quant-backtester/
 ```bash
 git clone https://github.com/<usuario>/quant-backtester.git
 cd quant-backtester
-pip install -r requirements.txt
+python -m venv .q-backtester
+source .q-backtester/Scripts/activate      # Windows PowerShell: .q-backtester\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 python -m src.data          # descarga y guarda los datos
-pytest                      # ejecuta los tests
+python -m pytest            # ejecuta los tests
 ```
 
-Después, abre los notebooks en orden (`01` → `02` → `03`).
+Después, abre los notebooks en orden (`01` → `02` → `03`). Los PDF de `docs/` se regeneran con `python docs/build_pdfs.py` (requiere `requirements-dev.txt`).
+
+> Usar `python -m pytest` en lugar de `pytest` evita problemas si el entorno virtual se ha movido de carpeta. En Windows con Smart App Control, pyarrow 25.0.x está bloqueado: por eso `requirements.txt` pide `pyarrow<25`.
 
 **Dependencias principales:** `pandas`, `numpy`, `yfinance`, `matplotlib`, `pyarrow`, `pytest`, `quantstats` (solo para verificación de métricas).
 
@@ -121,7 +138,7 @@ Después, abre los notebooks en orden (`01` → `02` → `03`).
 
 ## Decisiones de diseño
 
-- **Sin look-ahead bias:** las señales se desplazan un día antes de convertirse en posiciones.
+- **Sin look-ahead bias:** las señales se desplazan un día antes de convertirse en posiciones (`w_t = s_{t−1}`). Las estrategias nunca hacen `shift`: el desfase vive en un único sitio, el motor.
 - **Costes explícitos:** comisión y slippage en puntos básicos sobre el turnover; se pueden anular para comparar con el resultado bruto.
 - **Motor agnóstico:** cualquier estrategia que devuelva un DataFrame de señales (-1, 0, 1) se puede backtestear sin tocar el motor.
 - **Validación temporal:** el walk-forward es el único resultado que se considera representativo; las cifras in-sample se muestran solo como contraste.
@@ -134,4 +151,4 @@ Después, abre los notebooks en orden (`01` → `02` → `03`).
 - Datos diarios al cierre; no se modela intradía ni gaps de apertura.
 - Sin modelo de impacto de mercado ni de liquidez.
 - Posiciones cortas sin coste de préstamo ni restricciones realistas.
-- Sin apalancamiento ni gestión de margen.
+- Sin apalancamiento ni gestión de margen (salvo la extensión de *volatility targeting*, que escala posiciones hasta 2× sin coste de financiación).

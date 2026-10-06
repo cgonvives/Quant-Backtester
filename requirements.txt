@@ -1,0 +1,14 @@
+# Dependencias del proyecto:  python -m pip install -r requirements.txt
+pandas>=2.2
+numpy>=1.26
+yfinance>=0.2.54
+# <25: en Windows con Smart App Control activado, las DLL de parquet de pyarrow 25.0.x
+# se bloquean ("Una directiva de Control de aplicaciones bloqueó este archivo").
+# Quita el tope cuando una versión nueva cargue sin error:  python -c "import pyarrow.parquet"
+pyarrow>=15.0,<25
+matplotlib>=3.8
+pytest>=8.0
+ipykernel>=6.29
+
+# Opcional: solo para verificar las métricas propias (tests/test_quantstats_check.py)
+quantstats>=0.0.64
