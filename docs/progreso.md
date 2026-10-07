@@ -4,15 +4,15 @@ Marca cada casilla cuando su checkpoint esté en verde. Guía completa: `docs/00
 
 ## Preparación
 
-- [ ] Entorno creado e instalado (`python -m pip install -r requirements.txt`)
-- [ ] Datos descargados (`python -m src.data`)
-- [ ] Primera ejecución de `python -m pytest`: solo *passed* y *skipped*, ningún fallo
+- [X] Entorno creado e instalado (`python -m pip install -r requirements.txt`)
+- [X] Datos descargados (`python -m src.data`)
+- [X] Primera ejecución de `python -m pytest`: solo *passed* y *skipped*, ningún fallo
 
 ## Día 1 · Datos y motor (rama `feature/datos`)
 
-- [ ] 1.1 `simple_returns`
-- [ ] 1.2 `log_returns`
-- [ ] 1.3 `clean_prices`
+- [X] 1.1 `simple_returns`
+- [X] 1.2 `log_returns`
+- [X] 1.3 `clean_prices`
 - [ ] 2.1 `signals_to_positions`
 - [ ] 2.2 `compute_turnover`
 - [ ] 2.3 `compute_costs`

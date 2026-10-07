@@ -173,7 +173,8 @@ def simple_returns(prices: pd.DataFrame) -> pd.DataFrame:
     # Pista: "el precio de ayer", para toda la tabla de golpe, es prices.shift(1).
     # Cuidado: en pandas < 3, pct_change() rellenaba los huecos por defecto (fill_method="pad").
     # Escríbelo a partir de la fórmula: así sabes exactamente qué pasa con los NaN.
-    raise NotImplementedError("TODO 1.1 · simple_returns — ver docs/01_Datos_y_rendimientos.pdf")
+    r_t = prices / prices.shift(1) - 1
+    return r_t
 
 
 def log_returns(prices: pd.DataFrame) -> pd.DataFrame:
@@ -185,7 +186,8 @@ def log_returns(prices: pd.DataFrame) -> pd.DataFrame:
     # TODO 1.2 · log_returns
     # Objetivo: igual que simple_returns, pero con logaritmos.
     # Pista: numpy aplica np.log elemento a elemento sobre un DataFrame y conserva índice y columnas.
-    raise NotImplementedError("TODO 1.2 · log_returns — ver docs/01_Datos_y_rendimientos.pdf")
+    l_t = np.log(prices / prices.shift(1))
+    return l_t
 
 
 # ---------------------------------------------------------------------------
@@ -208,8 +210,16 @@ def clean_prices(prices: pd.DataFrame, max_ffill: int = config.MAX_FFILL_DAYS) -
     # Objetivo: los 5 pasos del docstring, en ese orden.
     # Pistas: index.duplicated(keep=...), sort_index(), mask(), dropna(how=...),
     # ffill(limit=...) y first_valid_index() (la "fecha común" es la más tardía de las primeras).
-    raise NotImplementedError("TODO 1.3 · clean_prices — ver docs/01_Datos_y_rendimientos.pdf")
+    duplicated = prices.index.duplicated(keep="last")
+    prices_new = prices[~duplicated].sort_index().astype(float)
+    cond_negs = (prices_new <= 0)
+    prices_new = prices_new.mask(cond=cond_negs).dropna(how="all")
+    prices_new = prices_new.ffill(limit=max_ffill)
+    first_dates = (prices_new[col].first_valid_index() for col in prices_new.columns)
+    common_start = max(first_dates)
+    prices_new = prices_new.loc[common_start:]
 
+    return prices_new
 
 # ---------------------------------------------------------------------------
 # Punto de entrada:  python -m src.data
