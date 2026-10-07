@@ -1,0 +1,17 @@
+[project]
+name = "quant-backtester"
+version = "0.1.0"
+description = "Motor de backtesting vectorizado en pandas, construido desde cero con fines didácticos."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "extension: tests de las extensiones opcionales (volatility targeting)",
+]
+# Una API de pandas obsoleta usada desde src/ hace fallar el test: así se aprende la API moderna.
+filterwarnings = [
+    "error::FutureWarning:src",
+    "error::DeprecationWarning:src",
+]

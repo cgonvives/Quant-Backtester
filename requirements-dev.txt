@@ -1,0 +1,9 @@
+# Herramientas extra: regenerar los PDFs de docs/ y ejecutar los notebooks en bloque
+#   python -m pip install -r requirements-dev.txt
+-r requirements.txt
+nbformat>=5.9
+nbclient>=0.10
+reportlab>=4.0
+
+# Opcional: Jupyter fuera de VS Code
+jupyter
