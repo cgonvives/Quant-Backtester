@@ -170,7 +170,11 @@ def signals_to_positions(signals: pd.DataFrame, lag: int = 1) -> pd.DataFrame:
     # Objetivo: desplazar las señales `lag` días hacia el futuro y rellenar el hueco inicial con 0.
     # Pista: shift(n) con n > 0 mueve los valores hacia fechas posteriores.
     # Pregunta: ¿qué pasaría con el Sharpe de una estrategia que "ve" el cierre de hoy?
-    raise NotImplementedError("TODO 2.1 · signals_to_positions — ver docs/02_Motor_de_backtesting.pdf")
+    if lag < 1:
+        raise ValueError("Look-ahead: la posición usaría el cierre que intenta predecir")
+
+    signals = signals.shift(lag, fill_value=0)
+    return signals
 
 
 def compute_turnover(positions: pd.DataFrame) -> pd.DataFrame:
@@ -184,7 +188,9 @@ def compute_turnover(positions: pd.DataFrame) -> pd.DataFrame:
     # Objetivo: cuánto cambia la posición de cada activo de un día al siguiente.
     # Pista: diff() deja NaN en la primera fila; ¿cuál debería ser su valor si w_{−1} = 0?
     #        (shift admite fill_value).
-    raise NotImplementedError("TODO 2.2 · compute_turnover — ver docs/02_Motor_de_backtesting.pdf")
+    positions_prev = positions.shift(1, fill_value=0)
+    turnover = (positions - positions_prev).abs()
+    return turnover
 
 
 def compute_costs(
@@ -198,8 +204,9 @@ def compute_costs(
     """
     # TODO 2.3 · compute_costs
     # Objetivo: pasar de bps a tanto por uno y multiplicar por el turnover.
-    raise NotImplementedError("TODO 2.3 · compute_costs — ver docs/02_Motor_de_backtesting.pdf")
-
+    bps = (commission_bps + slippage_bps) / 10000
+    costs = turnover * bps
+    return costs
 
 def asset_pnl(positions: pd.DataFrame, asset_returns: pd.DataFrame) -> pd.DataFrame:
     """P&L bruto por activo:  w_t · r_t.
@@ -210,7 +217,8 @@ def asset_pnl(positions: pd.DataFrame, asset_returns: pd.DataFrame) -> pd.DataFr
     # TODO 2.4 · asset_pnl
     # Objetivo: posición de hoy × rendimiento de hoy, activo a activo.
     # Ojo: aquí NO se desplaza nada: el desfase ya lo puso signals_to_positions.
-    raise NotImplementedError("TODO 2.4 · asset_pnl — ver docs/02_Motor_de_backtesting.pdf")
+    pnl = positions.fillna(0) *  asset_returns.fillna(0)
+    return pnl
 
 
 def to_portfolio(asset_values: pd.DataFrame) -> pd.Series:
@@ -222,7 +230,10 @@ def to_portfolio(asset_values: pd.DataFrame) -> pd.Series:
     # TODO 2.5 · to_portfolio
     # Objetivo: una Series con un valor por fecha.
     # Cuidado: mean(axis=1) NO es lo mismo cuando hay NaN. ¿Por qué?
-    raise NotImplementedError("TODO 2.5 · to_portfolio — ver docs/02_Motor_de_backtesting.pdf")
+    N = len(asset_values.columns)
+    values = asset_values.sum(axis=1)
+    values_portfolio = values / N
+    return values_portfolio
 
 
 def equity_curve(returns: pd.Series, initial: float = 1.0) -> pd.Series:
@@ -233,8 +244,10 @@ def equity_curve(returns: pd.Series, initial: float = 1.0) -> pd.Series:
     # TODO 2.6 · equity_curve
     # Objetivo: capitalizar los rendimientos diarios.
     # Pista: el producto acumulado es cumprod().
-    raise NotImplementedError("TODO 2.6 · equity_curve — ver docs/02_Motor_de_backtesting.pdf")
-
+    returns += 1
+    prod_returns = returns.cumprod()
+    equity = initial * prod_returns
+    return equity
 
 # ---------------------------------------------------------------------------
 # Extensión: volatility targeting (TODO 6.1)
