@@ -95,7 +95,10 @@ def _metric(source: str = "returns"):
 def annualized_volatility(returns: pd.Series, periods: int = config.TRADING_DAYS) -> float:
     """Volatilidad anualizada:  σ_diaria · √periods, con σ muestral (ddof = 1)."""
     # TODO 4.1 · annualized_volatility
-    raise NotImplementedError("TODO 4.1 · annualized_volatility — ver docs/04_Metricas.pdf")
+
+    std_diaria = returns.std()
+    annualized_vol = std_diaria * np.sqrt(periods)
+    return annualized_vol
 
 
 @_metric()
@@ -106,8 +109,11 @@ def cagr(returns: pd.Series, periods: int = config.TRADING_DAYS) -> float:
     """
     # TODO 4.2 · cagr
     # Pista: crecimiento total = producto de (1 + r); años = n / periods.
-    raise NotImplementedError("TODO 4.2 · cagr — ver docs/04_Metricas.pdf")
 
+    n = len(returns)
+    product = (1 + returns).prod()
+    cagr = (product ** (periods / n)) - 1
+    return cagr
 
 @_metric()
 def sharpe_ratio(
@@ -120,7 +126,13 @@ def sharpe_ratio(
     """
     # TODO 4.3 · sharpe_ratio
     # Cuidado: rf / 252 es una aproximación; aquí se pide la conversión geométrica.
-    raise NotImplementedError("TODO 4.3 · sharpe_ratio — ver docs/04_Metricas.pdf")
+
+    rf_d = ((1 + rf) ** (1 / periods)) - 1
+    exceso = returns - rf_d
+    media_exceso = exceso.mean()
+    std_exceso = exceso.std()
+    sharpe = media_exceso / std_exceso * np.sqrt(periods)
+    return sharpe
 
 
 @_metric()
@@ -135,7 +147,16 @@ def sortino_ratio(
     - Si no hay ningún exceso negativo, devuelve NaN.
     """
     # TODO 4.4 · sortino_ratio
-    raise NotImplementedError("TODO 4.4 · sortino_ratio — ver docs/04_Metricas.pdf")
+
+    n = len(returns)
+    rf_d = ((1 + rf) ** (1 / periods)) - 1
+    exceso = returns - rf_d
+    media_exceso = exceso.mean()
+    std_bajista_exceso = np.sqrt((np.minimum(exceso, 0) ** 2).sum() / n)
+    if std_bajista_exceso == 0:
+        return np.nan
+    sortino = media_exceso / std_bajista_exceso * np.sqrt(periods)
+    return sortino
 
 
 @_metric()
@@ -149,7 +170,11 @@ def drawdown_series(returns: pd.Series) -> pd.Series:
     """
     # TODO 4.5 · drawdown_series
     # Pista: cummax() da el máximo acumulado; ¿cómo haces que nunca sea menor que 1?
-    raise NotImplementedError("TODO 4.5 · drawdown_series — ver docs/04_Metricas.pdf")
+
+    equity_t = (1 + returns).cumprod()
+    max_prev = (equity_t.cummax()).clip(lower=1)
+    drawdown_series = equity_t / max_prev - 1
+    return drawdown_series
 
 
 @_metric()
@@ -164,14 +189,42 @@ def max_drawdown(returns: pd.Series) -> DrawdownInfo:
     """
     # TODO 4.6 · max_drawdown
     # Pista: idxmin(); y filtrar la serie antes y después del valle con .loc[:fecha] / .loc[fecha:].
-    raise NotImplementedError("TODO 4.6 · max_drawdown — ver docs/04_Metricas.pdf")
+
+    dd = drawdown_series(returns)
+    profundidad = dd.min()
+    if profundidad == 0:
+        return DrawdownInfo(0.0, None, None, None)
+
+    valle = dd.idxmin()
+    picos = dd.loc[:valle][dd.loc[:valle] == 0]
+    if not picos.empty:
+        pico = picos.index[-1]
+    else:
+        pico = None
+
+    recuperaciones = dd.loc[valle:][dd.loc[valle:] == 0]
+    if not recuperaciones.empty:
+        recuperacion = recuperaciones.index[0]
+    else:
+        recuperacion = None
+
+    max_drawdown_info = DrawdownInfo(profundidad, pico, valle, recuperacion)
+    return max_drawdown_info
 
 
 @_metric()
 def calmar_ratio(returns: pd.Series, periods: int = config.TRADING_DAYS) -> float:
     """Ratio de Calmar:  CAGR / |max drawdown|. Si no hay drawdown, NaN."""
     # TODO 4.7 · calmar_ratio
-    raise NotImplementedError("TODO 4.7 · calmar_ratio — ver docs/04_Metricas.pdf")
+
+    drawdown_info = max_drawdown(returns)
+    max_drawdown_value = drawdown_info.depth
+    if max_drawdown_value == 0:
+        return np.nan
+
+    cagr_value = cagr(returns, periods)
+    calmar = cagr_value / np.abs(max_drawdown_value)
+    return calmar
 
 
 @_metric()
@@ -182,7 +235,16 @@ def hit_ratio(returns: pd.Series) -> float:
     """
     # TODO 4.8 · hit_ratio
     # Pregunta: ¿por qué tiene sentido excluir los días en que la estrategia está fuera?
-    raise NotImplementedError("TODO 4.8 · hit_ratio — ver docs/04_Metricas.pdf")
+
+    no_planos = returns[returns != 0]
+    if no_planos.empty:
+        return np.nan
+    
+    n_plus = len(returns[returns > 0])
+    n_minus = len(returns[returns < 0])
+
+    hit = n_plus / len(no_planos)
+    return hit
 
 
 @_metric(source="turnover")
@@ -193,7 +255,12 @@ def annual_turnover(turnover: pd.Series, periods: int = config.TRADING_DAYS) -> 
     de 4 significa que, en un año, se ha movido 4 veces el capital.
     """
     # TODO 4.9 · annual_turnover
-    raise NotImplementedError("TODO 4.9 · annual_turnover — ver docs/04_Metricas.pdf")
+
+    n = len(turnover)
+    years = n / periods
+
+    ann_turnover = turnover.sum() / years
+    return ann_turnover
 
 
 # ---------------------------------------------------------------------------

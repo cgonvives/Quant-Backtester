@@ -244,8 +244,8 @@ def equity_curve(returns: pd.Series, initial: float = 1.0) -> pd.Series:
     # TODO 2.6 · equity_curve
     # Objetivo: capitalizar los rendimientos diarios.
     # Pista: el producto acumulado es cumprod().
-    returns += 1
-    prod_returns = returns.cumprod()
+    r = 1 + returns
+    prod_returns = r.cumprod()
     equity = initial * prod_returns
     return equity
 

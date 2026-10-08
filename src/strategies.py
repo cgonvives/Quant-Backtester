@@ -135,8 +135,18 @@ def sma_crossover(
     # TODO 3.1 · sma_crossover
     # Objetivo: dos medias móviles por columna y una comparación entre ellas.
     # Pista: comparar con NaN da False, y (False).astype(float) da 0.0.
-    raise NotImplementedError("TODO 3.1 · sma_crossover — ver docs/03_Estrategias.pdf")
 
+    fast_ma = prices.rolling(fast, min_periods=fast).mean()
+    slow_ma = prices.rolling(slow, min_periods=slow).mean()
+    
+    signals_long = (fast_ma > slow_ma).astype(float)
+    if allow_short:
+        signals_short = (fast_ma < slow_ma).astype(float)
+        signals = signals_long - signals_short
+    else:
+        signals = signals_long
+
+    return signals
 
 @strategy
 def momentum_12m(
@@ -164,8 +174,21 @@ def momentum_12m(
     # Pasos: 1) precios de fin de mes con prices.loc[_month_end_dates(prices.index)]
     #        2) shift() en esa tabla mensual = desplazarse meses, no días
     #        3) reindex al índice diario + ffill + 0 donde aún no hay señal
-    raise NotImplementedError("TODO 3.2 · momentum_12m — ver docs/03_Estrategias.pdf")
 
+    end_months_prices = prices.loc[_month_end_dates(prices.index)]
+    lookback_months_prices = end_months_prices.shift(lookback_months)
+    skip_months_prices = end_months_prices.shift(skip_months)
+    momentum = (skip_months_prices / lookback_months_prices) - 1
+    
+    signals_long = (momentum > 0).astype(float)
+    if allow_short:
+        signals_short = (momentum < 0).astype(float)
+        signals = signals_long - signals_short
+    else:
+        signals = signals_long
+
+    prices_signals = signals.reindex(prices.index).ffill().fillna(0)
+    return prices_signals
 
 # ---------------------------------------------------------------------------
 # Mean reversion (TODO 3.3)
@@ -191,4 +214,24 @@ def bollinger_mean_reversion(
     # Truco: tabla de NaN → poner 1 donde hay entrada y 0 donde hay salida → ffill() → fillna(0).
     #        Los NaN que quedan en medio "heredan" el último estado.
     # Con cortos: haz la pata larga y la corta por separado y súmalas.
-    raise NotImplementedError("TODO 3.3 · bollinger_mean_reversion — ver docs/03_Estrategias.pdf")
+
+    mean = prices.rolling(window, min_periods=window).mean()
+    std = prices.rolling(window, min_periods=window).std()
+    lower_band = mean - n_std * std
+    upper_band = mean + n_std * std
+
+    signals_long = pd.DataFrame(np.nan, index=prices.index, columns=prices.columns)
+    long_cond_entry = prices < lower_band
+    long_cond_exit = prices >= mean
+    signals_long = signals_long.mask(long_cond_entry, 1).mask(long_cond_exit, 0).ffill().fillna(0)
+
+    if allow_short:
+        signals_short = pd.DataFrame(np.nan, index=prices.index, columns=prices.columns)
+        short_cond_entry = prices > upper_band
+        short_cond_exit = prices <= mean
+        signals_short = signals_short.mask(short_cond_entry, -1).mask(short_cond_exit, 0).ffill().fillna(0)
+        signals = signals_long + signals_short   
+    else:
+        signals = signals_long
+
+    return signals
