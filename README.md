@@ -10,15 +10,38 @@ Se prueban dos familias de estrategias clásicas —momentum (cruce de medias) y
 
 ## Resultados
 
-*(Pendiente: tabla comparativa y gráfico de equity de las estrategias vs. buy-and-hold, con y sin costes, y curva walk-forward. La sección 6 del notebook `03_walkforward` genera la tabla en Markdown y la imagen `docs/img/equity.png`.)*
+Todas las cifras son **fuera de muestra y sobre el mismo periodo**: del 4-1-2013 (primer año de test del walk-forward) al 7-10-2026. La cartera es equiponderada entre los 10 activos. Las estrategias usan los parámetros por defecto (50/200, 12 meses, Bollinger 20 días y 2σ). El walk-forward reoptimiza el cruce de medias cada año: 3 años de train, 1 de test y una rejilla de 17 combinaciones elegidas por Sharpe. La sección 6 del notebook `03_walkforward` regenera la tabla y el gráfico.
+
+![Equity fuera de muestra, con costes](docs/img/equity.png)
+
+**Con costes (5 bps de comisión + 5 bps de slippage)**
 
 | Estrategia | CAGR | Vol. | Sharpe | Sortino | Max DD | Calmar | Turnover anual |
 |---|---|---|---|---|---|---|---|
-| Buy & Hold | | | | | | | |
-| Momentum (cruce MM) | | | | | | | |
-| Momentum 12m | | | | | | | |
-| Mean reversion (Bollinger) | | | | | | | |
-| Walk-forward | | | | | | | |
+| Buy & Hold | 15.0% | 14.4% | 1.04 | 1.49 | -28.3% | 0.53 | 0.0× |
+| Momentum (cruce MM) | 10.6% | 10.6% | 1.00 | 1.38 | -22.9% | 0.46 | 1.2× |
+| Momentum 12m | 10.3% | 10.9% | 0.95 | 1.34 | -20.4% | 0.50 | 1.2× |
+| Mean reversion (Bollinger) | 4.2% | 9.2% | 0.49 | 0.71 | -25.0% | 0.17 | 8.7× |
+| Walk-forward | 9.5% | 9.9% | 0.97 | 1.33 | -20.0% | 0.48 | 2.5× |
+
+**Sin costes**
+
+| Estrategia | CAGR | Vol. | Sharpe | Sortino | Max DD | Calmar | Turnover anual |
+|---|---|---|---|---|---|---|---|
+| Buy & Hold | 15.0% | 14.4% | 1.04 | 1.49 | -28.3% | 0.53 | 0.0× |
+| Momentum (cruce MM) | 10.8% | 10.6% | 1.01 | 1.40 | -22.9% | 0.47 | 1.2× |
+| Momentum 12m | 10.4% | 10.9% | 0.96 | 1.35 | -20.4% | 0.51 | 1.2× |
+| Mean reversion (Bollinger) | 5.1% | 9.2% | 0.58 | 0.85 | -24.6% | 0.21 | 8.7× |
+| Walk-forward | 9.6% | 9.9% | 0.98 | 1.34 | -20.0% | 0.48 | 2.6× |
+
+**Lectura rápida**
+
+- **Ninguna estrategia bate a buy-and-hold en Sharpe** en este periodo alcista. Las de momentum se le acercan con menos volatilidad y menos drawdown (−20 % a −23 % frente a −28 %), a costa de casi 5 puntos de CAGR.
+- **Los costes deciden en las estrategias de alto turnover.** Bollinger mueve 8,7 veces la cartera al año: los costes le quitan casi 1 punto de CAGR y bajan su Sharpe de 0,58 a 0,49. A las estrategias lentas apenas les afectan.
+- **Reoptimizar no ha aportado nada fuera de muestra.** El walk-forward (Sharpe 0,97) no mejora los parámetros de libro 50/200 (1,00) y duplica el turnover. La misma estrategia optimizada con todo el histórico llega a un Sharpe de 1,21, pero solo porque elige sus parámetros mirando el periodo en el que se evalúa (notebook 03).
+- El turnover de buy-and-hold sale 0,0× porque la entrada inicial queda antes del periodo fuera de muestra.
+
+*Cifras calculadas con los precios descargados de Yahoo Finance el 7-10-2026; cambian ligeramente con cada descarga porque Yahoo recalcula hacia atrás los precios ajustados.*
 
 ---
 
