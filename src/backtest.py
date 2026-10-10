@@ -273,4 +273,8 @@ def apply_vol_target(
     # Objetivo: una escala por activo y día, multiplicada por las posiciones.
     # Pista: rolling(lookback, min_periods=lookback).std() incluye el día t;
     #        la posición del día t solo puede usar información hasta t−1.
-    raise NotImplementedError("TODO 6.1 · apply_vol_target — ver docs/06_Volatility_targeting.pdf")
+
+    realized = asset_returns.rolling(lookback, min_periods=lookback).std() * np.sqrt(periods)
+    scale = (target_vol / realized.shift(1)).clip(upper=max_leverage).fillna(0.0)
+    return positions * scale
+

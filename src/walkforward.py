@@ -152,8 +152,23 @@ def generate_windows(
     # TODO 5.1 · generate_windows
     # Pista: calcula cada inicio desde index[0] (index[0] + DateOffset(years=k*step)) en lugar de
     #        ir sumando sobre la ventana anterior: así no se acumulan desajustes (29 de febrero).
-    raise NotImplementedError("TODO 5.1 · generate_windows — ver docs/05_Walk_forward_y_sobreajuste.pdf")
 
+    t_0 = index[0]
+    t_last = index[-1]
+    k = 0
+    fin_train = t_0
+    windows = []
+
+    while fin_train < t_last:
+        inicio = t_0 + pd.DateOffset(years=k*step_years)
+        fin_train = inicio + pd.DateOffset(years=train_years)
+        fin_test = fin_train + pd.DateOffset(years=test_years)
+
+        if fin_train <= t_last:
+            windows.append(Window(inicio, fin_train, fin_train, fin_test))
+        k += 1
+    
+    return windows
 
 def evaluate_params(
     prices: pd.DataFrame,
@@ -180,7 +195,13 @@ def evaluate_params(
     # Cuidado 1: si recortas los precios a [start, end) ANTES de calcular la señal, una media de
     #            200 días pasa los primeros 200 días del tramo sin señal. Eso no es lo que pasaría.
     # Cuidado 2: `end` es exclusivo.
-    raise NotImplementedError("TODO 5.2 · evaluate_params — ver docs/05_Walk_forward_y_sobreajuste.pdf")
+
+    history = prices[prices.index < end]
+    signals = strategy(history, **params)
+    results = run_backtest(history, signals, commission_bps, slippage_bps, lag)
+    score = results.returns[results.returns.index >= start]
+
+    return float(METRICS[metric](score))
 
 
 def grid_search(
@@ -208,8 +229,20 @@ def grid_search(
     # TODO 5.3 · grid_search
     # Pistas: evalúa con evaluate_params; ordena POSICIONES (0..n-1) con sorted(), que es estable,
     #         usando una clave que mande los NaN al final.
-    raise NotImplementedError("TODO 5.3 · grid_search — ver docs/05_Walk_forward_y_sobreajuste.pdf")
 
+    scores = [evaluate_params(prices, strategy, gr, start, end, metric, commission_bps, slippage_bps, lag) for gr in grid]
+
+    def clave(i):
+        if np.isnan(scores[i]):
+            return (True, 0.0)
+        return (False, -scores[i])
+
+    order = sorted(range(len(grid)), key=clave)
+    table = pd.DataFrame([grid[i] for i in order], index=order)
+    table["score"] = [scores[i] for i in order]
+    best = order[0]
+
+    return GridSearchResult(table, grid[best], scores[best], metric)
 
 def walk_forward(
     prices: pd.DataFrame,
@@ -246,4 +279,19 @@ def walk_forward(
     # Cuidado: si concatenas los RENDIMIENTOS de cada tramo, el cambio de posición entre el último
     #          día de un tramo y el primero del siguiente no paga costes. Encadena POSICIONES.
     # Devuelve: WalkForwardResult(result=..., windows=windows, searches=[...una por ventana...])
-    raise NotImplementedError("TODO 5.4 · walk_forward — ver docs/05_Walk_forward_y_sobreajuste.pdf")
+    
+    searches = []
+    positions = []
+    for w in windows:
+        search = grid_search(prices, strategy, grid, w.train_start, w.train_end, metric, **costs, lag=lag)
+        searches.append(search)
+        history = prices[prices.index < w.test_end]
+        signals = strategy(history, **search.best_params)
+        position = signals_to_positions(signals, lag)
+        positions.append(position.loc[w.test_mask(position.index)])
+
+    oos_positions = pd.concat(positions)
+    positions = oos_positions.reindex(prices.index, fill_value=0.0)
+    complete = backtest_positions(prices, positions, **costs)
+    out = complete.slice(oos_positions.index[0], oos_positions.index[-1])
+    return WalkForwardResult(out, windows, searches)
